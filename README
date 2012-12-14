@@ -2,8 +2,8 @@ SoC_u3shaders
 =============
 Shaders for Stalker SoC
 Author: Piotr "utak3r" Borys
-Version: 2.0
-Released: 2010-03-28
+Version: 2.2
+Released: not released
 
 Please note for proper results you should turn on a bloom effect. 
 Don't be scared, it's a modified bloom, working properly.

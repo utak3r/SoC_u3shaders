@@ -18,18 +18,19 @@ struct vf
 
 vf main (vi v)
 {
-        vf                 	o;
+	vf                 	o;
 
-	float4	tpos	    = mul	(1000, v.p);
-        o.hpos              = mul       (m_WVP, tpos);						// xform, input in world coords, 1000 - magic number
-	o.hpos.z	    = o.hpos.w;
-        o.tc0               = v.tc0;                        					// copy tc
-        o.tc1               = v.tc1;                        					// copy tc
+	//float4 tpos = mul(1000, v.p);
+	float4 tpos = v.p;
+	o.hpos              = mul       (m_WVP, tpos);						// xform, input in world coords, 1000 - magic number
+	//o.hpos.z	    = o.hpos.w;
+	o.tc0               = v.tc0;                        					// copy tc
+	o.tc1               = v.tc1;                        					// copy tc
 #ifdef USE_VTF
-        float	scale		= tex2Dlod	(s_tonemap,float4(.5,.5,.5,.5)).x ;
-        o.c                	= float4	( v.c.rgb*scale*2.0h, v.c.a );      		// copy color, pre-scale by tonemap //float4 ( v.c.rgb*scale*2, v.c.a );
+	float	scale		= tex2Dlod	(s_tonemap,float4(.5,.5,.5,.5)).x ;
+	o.c                	= float4	( v.c.rgb*scale*2.0h, v.c.a );      		// copy color, pre-scale by tonemap //float4 ( v.c.rgb*scale*2, v.c.a );
 #else
-        o.c                	= v.c       ;										// copy color, low precision
+	o.c                	= v.c       ;										// copy color, low precision
 #endif
-        return              o;
+	return              o;
 }

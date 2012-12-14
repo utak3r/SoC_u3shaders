@@ -16,27 +16,27 @@
 // #define USE_GAMMA_22
 #define USE_GAMMA_NEW
 //#define USE_SJITTER
-// #define USE_SUNFILTER
+//#define USE_SUNFILTER
 //#define USE_HWSMAP                	//- HW-options defined
-// #define USE_FETCH4
-// #define USE_MBLUR                	//- HW-options defined
+//#define USE_FETCH4
+//#define USE_MBLUR                	//- HW-options defined
 //#define USE_SUNMASK                		//- shader defined
-// #define USE_STEEPPARALLAX
+//#define USE_STEEPPARALLAX
 
-#define SMAP_size 4096
+#define SMAP_size 2048
 // #define USE_HBAO
-#define SSAO_QUALITY 1
+#define SSAO_QUALITY 2
 #define SUN_QUALITY 2
 //#define USE_HWSMAP_PCF
 //#define SUN_SHAFTS_QUALITY 3
 
-#define BLOOM_val 0.5h 		//Bloom brightness - Increases HDR brightness of the sky
+#define BLOOM_val 0.7h 		//Bloom brightness - Increases HDR brightness of the sky
 
 // If you have USE_SUNFILTER on, then turn USE_SUN_SHAFTS off.
-// #define USE_SUN_SHAFTS
-#define SUN_SHAFTS_RAY_SAMPLES int(18)	 // Amount of sun ray samples. The higher this is, the lower your framerate.
-#define SUN_SHAFTS_INTENSITY half(2) // Intensity of sun rays per sample.
-#define SUN_SHAFTS_CONTRAST float(4) // Amount of contrast during sunray calculation.
+//#define USE_SUN_SHAFTS
+#define SUN_SHAFTS_RAY_SAMPLES int(10)	 // Amount of sun ray samples. The higher this is, the lower your framerate.
+#define SUN_SHAFTS_INTENSITY half(1.5) // Intensity of sun rays per sample.
+#define SUN_SHAFTS_CONTRAST float(3) // Amount of contrast during sunray calculation.
 
 // #define USE_HWSMAP_PCF				//- nVidia GF3+, R600+
 
@@ -45,10 +45,10 @@
 // #define FP16_FILTER                	//- HW-options defined
 // #define FP16_BLEND                	//- HW-options defined
 //
-// #define USE_PARALLAX                	//- shader defined
+#define USE_PARALLAX                	//- shader defined
 // #define USE_TDETAIL                	//- shader defined
 // #define USE_LM_HEMI                	//- shader defined
-// #define USE_DISTORT                	//- shader defined
+//#define USE_DISTORT                	//- shader defined
 // #define DBG_TMAPPING
 //////////////////////////////////////////////////////////////////////////////////////////
 #ifndef SMAP_size

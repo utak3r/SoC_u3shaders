@@ -1,6 +1,7 @@
 function l_special	(shader, t_base, t_second, t_detail)
 	shader:begin	("lod","lod")
 			: blend	(false, blend.one, blend.zero)
+--			: blend	(false, blend.srcalpha, blend.one)
 			: zb	(true,  true)
 			: fog	(false)
 	shader:sampler	("s_base")      :texture	(t_base)

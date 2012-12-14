@@ -27,8 +27,8 @@ f_deffer 	main	( vf I )
   half3 N 	= normalize	(H.xyz);
 
   // 2. Standart output
-  O.Ne          = half4		(N					, H.w		);
-  O.position    = half4 	(I.position + N*def_virtualh/2.h	, 0		);
-  O.C		= half4		(D.x,	D.y,	D.z			, def_gloss	);		// OUT: rgb.gloss
+  O.Ne = half4(N, H.w);
+  O.position = half4(I.position + N*def_virtualh/2.h, 0);
+  O.C = half4(D.x, D.y, D.z, def_gloss);	// OUT: rgb.gloss
   return O;
 }

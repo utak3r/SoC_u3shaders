@@ -9,6 +9,10 @@ half	calc_ssao( half3 P, half3 N, half2 tc, half2 tcJ)
 
 #else	//	SSAO_QUALITY
 
+#if SSAO_QUALITY > 3
+#define SSAO_QUALITY = 3
+#endif
+
 #if SSAO_QUALITY == 3
 #define RINGS 3
 #define DIRS 8

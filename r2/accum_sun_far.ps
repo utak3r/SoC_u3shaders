@@ -2,7 +2,7 @@
 #include "lmodel.h"
 #include "shadow.h"
 
-#define SUN_FARPLANE 100.f
+#define SUN_FARPLANE 200.f
 
 float4 SunShafts (float2 tc , float4 tcJ)
 {
@@ -40,6 +40,32 @@ float4 SunShafts (float2 tc , float4 tcJ)
 	fSturation	= 0.80*fSturation+0.20;
 
 	res		*= fSturation;
+	return res*Ldynamic_color;
+}
+
+float4 SunShafts2(float2 tc,float4 tcJ) 
+{
+	float3 P=tex2D(s_position,tc).xyz;
+	float4 J0=tex2D(jitter0,tcJ);
+	float coeff=(SUN_SHAFTS_RAY_SAMPLES-2*J0.x)/(SUN_SHAFTS_RAY_SAMPLES*SUN_SHAFTS_RAY_SAMPLES);
+	float3 direction=P*coeff;
+	float4 current=mul(m_shadow,float4(P,1));
+	float4 delta=mul(m_shadow,float4(direction,0));
+	float res=0;
+	float density=SUN_SHAFTS_INTENSITY/SUN_SHAFTS_RAY_SAMPLES;
+	for (int i=0;i<SUN_SHAFTS_RAY_SAMPLES;++i)
+	{
+		#ifdef USE_HWSMAP
+		#ifdef USE_FETCH4
+		res+=density*(sample_hw_f4(current,float4(0,0,0,0)));
+		#else
+		res+=density*(sample_hw_pcf(current,float4(0,0,0,0)));
+		#endif
+		#else
+		res+=density*(sample_sw(current.xy/current.w,float2(0,0),current.z));
+		#endif
+		current-=delta;
+	}
 	return res*Ldynamic_color;
 }
 
@@ -87,7 +113,7 @@ float4 	main		( float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1 ) : COLOR
 	float4 ss = 0;
 	//if(_P.z>11.976 && _P.z<30) 
 	//	ss = SunShafts(tc,tcJ)/1.7 + ((0-SunShafts(tc,tcJ)/1.7)*(_P.z-11.976))/(30-11.976);
-	ss = SunShafts(tc, tcJ); 
+	ss = SunShafts2(tc, tcJ); 
 #endif // USE_SUN_SHAFTS
 
 	half4	light 	= plight_infinity (m,_P,_N,Ldynamic_dir);
