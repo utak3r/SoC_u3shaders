@@ -1,49 +1,77 @@
-#include "options.h"
 #include "common.h"
 #include "lmodel.h"
 #include "shadow.h"
-#define SUN_FARPLANE 180.f
-float4 	SunShafts (float2 tc , float4 tcJ )
-{	
-	float3 P = tex2D(s_position, tc).xyz;
-	float4	J0 	= tex2D		(jitter0,tcJ);
-	float coeff = (RAY_SAMPLES - 2*J0.x)/(RAY_SAMPLES*RAY_SAMPLES) ;		
-	float3 direction = P*coeff;
-	float4 current	= mul (m_shadow,float4(P,1));
-	float4 delta 	= mul (m_shadow, float4(direction,0));
-	float res = 0;
-	float density = SS_INTENSITY/RAY_SAMPLES;
-	for ( int i=0; i<RAY_SAMPLES; ++i )
-	{
-	#ifdef	USE_HWSMAP
-		#ifdef USE_FETCH4
-			res += density*( sample_hw_f4(current,float4(0,0,0,0)) );
-			#else
-			res += density*( sample_hw_pcf(current,float4(0,0,0,0)) );
-			#endif
-	#else
-			res += density*( sample_sw(current.xy/current.w,float2(0,0),current.z) );
-	#endif
-			current -= delta;
+
+#define SUN_FARPLANE 100.f
+
+float4 SunShafts (float2 tc , float4 tcJ)
+{
+	half3	P = tex2D(s_position, tc).xyz;
+	half3	direction = P/SUN_SHAFTS_RAY_SAMPLES;
+
+	half	depth = P.z;
+	half	deltaDepth = direction.z;
+	half4	current	= mul (m_shadow,float4(P,1));
+	half4	delta 	= mul (m_shadow, float4(direction,0));
+	half	res = 0;
+	half	max_density = SUN_SHAFTS_INTENSITY;
+	half	density = max_density/SUN_SHAFTS_RAY_SAMPLES;
+
+	if (depth<0.0001)
+		res = max_density;
+
+	// well... na razie tak, dopóki czegoœ nie wymyœlê...
+	//int nDepth = (int)((depth - 0.3h) / deltaDepth);
+	//if (nDepth > 1024) nDepth = 1024;
+	//if (nDepth < 1) nDepth = 1;
+	int nDepth = 20;
+	for (int i = 0; i < nDepth; ++i)
+	{		
+		//res += density*shadow(current);
+		res += density*shadow_sw(current);
+		// res += density*sample_hw_pcf(current, float4(0,0,0,0));
+		// res += density * (sample_sw(current.xy/current.w, float2(0,0), current.z));
+		depth -= deltaDepth;
+		current -= delta;
 	}
+
+	float fSturation = -Ldynamic_dir.z;
+	fSturation	= 0.5*fSturation+0.5;
+	fSturation	= 0.80*fSturation+0.20;
+
+	res		*= fSturation;
 	return res*Ldynamic_color;
 }
-	#ifndef USE_F32
+
 #ifdef USE_SUNFILTER
-	
-float4 	main		( float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1 ) : COLOR
+float4 main(float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1 ) : COLOR
 {
-  float4 	_P	= tex2D 	(s_position, 	tc);
-		_P.w 	= 1.f		;
-	float4 	PS	= mul		(m_shadow, 	_P);
-#ifdef 	USE_HWSMAP
-	half 	s 	= sunmask(_P)*sample_hw	(PS,float4(0,0,0,0) );
-#else
-	half 	s 	= sunmask(_P)*sample_sw	(PS.xy / PS.w, float2(0,0), PS.z);
-#endif
-	return 	s	;
+	float4 _P = tex2D (s_position, tc);
+	_P.w = 1.f;
+	float4 PS = mul(m_shadow, _P);
+
+#ifndef	SUN_QUALITY
+#ifdef	USE_HWSMAP
+	#ifdef USE_FETCH4
+		half s = sunmask(_P)*sample_hw_f4(PS, float4(0,0,0,0)); // USE_SUNFILTER && !SUN_QUALITY && USE_HWSMAP && USE_FETCH4
+	#else
+		half s = sunmask(_P)*sample_hw_pcf(PS, float4(0,0,0,0)); // USE_SUNFILTER && !SUN_QUALITY && USE_HWSMAP && !USE_FETCH4
+	#endif // USE_FETCH4
+#else // USE_HWSMAP
+	half s = sunmask(_P)*sample_sw(PS.xy / PS.w, float2(0,0), PS.z); // USE_SUNFILTER && !SUN_QUALITY && !USE_HWSMAP
+#endif // USE_HWSMAP
+#else // SUN_QUALITY
+	half s = sunmask(_P); // USE_SUNFILTER && SUN_QUALITY == 0
+	#if SUN_QUALITY==1
+		s *= shadow(PS); // USE_SUNFILTER && SUN_QUALITY == 1
+	#elif SUN_QUALITY==2
+		s *= shadowtest_sun(PS,tcJ); // USE_SUNFILTER && SUN_QUALITY == 2
+	#endif
+#endif	// SUN_QUALITY
+
+	return s;
 }
-#else
+#else // USE_SUNFILTER
 float4 	main		( float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1 ) : COLOR
 {
   float4 _P		= tex2D 	(s_position, 	tc);
@@ -53,27 +81,39 @@ float4 	main		( float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1 ) : COLOR
 	half 	m	= xmaterial	;
 # ifndef USE_R2_STATIC_SUN
 			m 	= _P.w		;
-# endif
+# endif // USE_R2_STATIC_SUN
+
+#ifdef USE_SUN_SHAFTS
 	float4 ss = 0;
-	#ifdef SS_FARNEARLERP
-	if(_P.z>11.976 && _P.z<30) ss = SunShafts(tc,tcJ)/1.7+((0-SunShafts(tc,tcJ)/1.7)*(_P.z-11.976))/(30-11.976);
-	#else
-	ss = SunShafts(tc,tcJ); 
-	#endif
+	//if(_P.z>11.976 && _P.z<30) 
+	//	ss = SunShafts(tc,tcJ)/1.7 + ((0-SunShafts(tc,tcJ)/1.7)*(_P.z-11.976))/(30-11.976);
+	ss = SunShafts(tc, tcJ); 
+#endif // USE_SUN_SHAFTS
+
 	half4	light 	= plight_infinity (m,_P,_N,Ldynamic_dir);
 
 	// ----- shadow
   	float4 	P4 	= float4	(_P.x,_P.y,_P.z,1);
 	float4 	PS	= mul		(m_shadow, 	P4);
+
+#ifndef	SUN_QUALITY
 #ifdef	USE_HWSMAP
 	#ifdef USE_FETCH4
 		half 	s 	= sunmask(P4)*sample_hw_f4	(PS, float4(0,0,0,0) );
 	#else
 		half 	s 	= sunmask(P4)*sample_hw_pcf	(PS, float4(0,0,0,0) );
-	#endif
-#else
+	#endif // USE_FETCH4
+#else // USE_HWSMAP
 	half 	s 	= sunmask(P4)*sample_sw	(PS.xy / PS.w, float2(0,0), PS.z);
-#endif
+#endif // USE_HWSMAP
+#else	//	SUN_QUALITY
+	half 	s 	= sunmask(P4);
+	#if SUN_QUALITY==1
+		s 	*= shadow		(PS);
+	#elif SUN_QUALITY==2
+		s 	*= shadowtest_sun 	(PS,tcJ);
+	#endif
+#endif	//	SUN_QUALITY
 
 
 #ifdef 	SUN_FARPLANE
@@ -81,75 +121,10 @@ float4 	main		( float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1 ) : COLOR
 	s			= lerp		(s, 0.333h, f*f);
 #endif
 
-	#ifdef SUN_SHAFTS
-	return blend(lerp((Ldynamic_color*light*s)*SS_CONTRAST,ss,light),tc);
-	#else
-	return 	blend		((Ldynamic_color * light * s), tc);
-	#endif
-	//return 	blend		((Ldynamic_color * lerp(light,s*light,light)), tc);
+#ifdef USE_SUN_SHAFTS
+	return blend(lerp((Ldynamic_color*light*s) * SUN_SHAFTS_CONTRAST, ss, light), tc);
+#else // USE_SUN_SHAFTS
+	return blend(Ldynamic_color * light * s, tc);
+#endif // USE_SUN_SHAFTS
 }
-#endif
-	#else
-#ifdef USE_SUNFILTER
-float4 	main		( float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1, float3 T : TANGENT, float4 color : COLOR0 ) : COLOR
-{
-  float4 	_P	= tex2D 	(s_position, 	tc);
-		_P.w 	= 1.f		;
-	float4 	PS	= mul		(m_shadow, 	_P);
-#ifdef 	USE_HWSMAP
-	half 	s 	= sunmask(_P)*sample_hw	(PS,float4(0,0,0,0) );
-#else
-	half 	s 	= sunmask(_P)*sample_sw	(PS.xy / PS.w, float2(0,0), PS.z);
-
-#endif
-	return 	s	;
-	
-	// old: 	half 	s 	= sunmask(_P)*shadow_hw_f4	(PS);
-
-}
-#else 
-float4 	main		( float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1, float3 T : TANGENT, float4 color : COLOR0 ) : COLOR
-{
-  float4 _P		= tex2D 	(s_position, 	tc);
-  half4  _N		= tex2D 	(s_normal,   	tc);
-  float3 TX		= tan(_N);
-
-	// ----- light-model
-	half 	m	= xmaterial	;
-# ifndef USE_R2_STATIC_SUN
-			m 	= _P.w		;
-# endif
-	float4 ss = 0;
-	#ifdef SS_FARNEARLERP
-	if(_P.z>11.976 && _P.z<30) ss = SunShafts(tc,tcJ)/1.7+((0-SunShafts(tc,tcJ)/1.7)*(_P.z-11.976))/(30-11.976);
-	#else
-	ss = SunShafts(tc,tcJ); 
-	#endif
-	half4	light 	= plight_infinity2 (m,_P,_N,Ldynamic_dir,TX,color);
-
-	// ----- shadow
-  	float4 	P4 	= float4	(_P.x,_P.y,_P.z,1);
-	float4 	PS	= mul		(m_shadow, 	P4);
-#ifdef	USE_HWSMAP
-	#ifdef USE_FETCH4
-		half 	s 	= sunmask(P4)*shadow_hw_f4	(PS);
-	#else
-		half 	s 	= sunmask(P4)*sample_hw_pcf_far	(PS);
-	#endif
-#else
-	half 	s 	= sunmask(P4)*sample_sw	(PS.xy / PS.w, float2(1,0), PS.z);
-#endif
-
-
-#ifdef 	SUN_FARPLANE
-	float f		= saturate	(_P.z/SUN_FARPLANE);
-	s			= lerp		(s, 0.333h, f*f);
-#endif
-	#ifdef SUN_SHAFTS
-	return blend(lerp((Ldynamic_color*light*s)*SS_CONTRAST,ss,light),tc);
-	#else
-	return 	blend		((Ldynamic_color * light * s), tc);
-	#endif
-}
-#endif
-	#endif
+#endif // USE_SUNFILTER

@@ -14,7 +14,7 @@ f_deffer 	main	( p_particle II )
 
   // 1. Base texture + kill pixels with low alpha
   half4 	D 	= 	tex2D		(s_base, I.tcdh);
-		D	*=	II.color;
+			D	*=	II.color;
 			clip	(D.w-def_aref);
 
   // 2. Standart output

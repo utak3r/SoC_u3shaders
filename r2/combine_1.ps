@@ -1,7 +1,17 @@
-#include "options.h"
 #include "common.h"
+
+//#define USE_SUPER_SPECULAR
+//#define USE_ORIGINAL_SSAO
+//#define HBAO_WORLD_JITTER
+
+uniform	sampler2D	s_half_depth;
+
 #include "lmodel.h"
 #include "hmodel.h"
+
+#include "ssao_blur.ps"
+#include "ssao.ps"
+#include "ssao_hbao.ps"
 
 struct         _input      {
         float4         hpos        : POSITION        ;
@@ -10,6 +20,7 @@ struct         _input      {
 #else
           float2         tc0                : TEXCOORD0        ;        // tc.xy
 #endif
+	float2	tcJ	: TEXCOORD1;	// jitter coords
 };
 
 struct        _out                {
@@ -18,7 +29,7 @@ struct        _out                {
 };
 
 uniform sampler1D         fog_table        ;
-	#ifndef USE_F32
+
 _out         main                ( _input I )
 {
           // Sample the buffers:
@@ -26,6 +37,8 @@ _out         main                ( _input I )
           half4 N         = tex2D         (s_normal,        I.tc0);                // normal.hemi
           half4 D         = tex2D         (s_diffuse,       I.tc0);                // rgb.gloss
           half4 L         = tex2D         (s_accumulator, 	I.tc0);                // diffuse.specular
+
+//			 D.rgb *= (D.rgb+0.1);  // rasie texures contrast
 
 #ifdef         USE_SUPER_SPECULAR
         {
@@ -38,8 +51,12 @@ _out         main                ( _input I )
         D.w                =        FORCE_GLOSS                ;
 #endif
 
-#ifdef         USE_GAMMA_22
-        D.rgb        =        (D.rgb*D.rgb)        ;        // pow(2.2)
+#ifdef USE_GAMMA_22
+	D.rgb = (D.rgb*D.rgb)
+#endif
+
+#ifdef USE_GAMMA_NEW
+	//D.rgb = (D.rgb*(D.rgb/2.f))
 #endif
 
         // static sun
@@ -50,46 +67,76 @@ _out         main                ( _input I )
             L              +=       Ldynamic_color * sun_occ * plight_infinity	(mtl, P.xyz, N.xyz, Ldynamic_dir);
 #endif
 
-        // hemisphere + SSAO
+        // hemisphere
         half3       hdiffuse,hspecular;
-		half occ = calc_ssao(P, N, I.tc0);
+
+	//  Calculate SSAO
+//#ifdef USE_SSAO_BLUR
+//	half occ = ssao_blur_ps(I.tc0);
+#ifdef USE_HBAO
+	float occ = calc_hbao(P.z, N, I.tc0);
+#else
+	half occ = calc_ssao(P, N, I.tc0, I.tcJ);
+#endif
+
+
         hmodel		(hdiffuse, hspecular, mtl, N.w, D.w, P.xyz, N.xyz);
-#ifdef SSAO_TEX_CONT
-		hdiffuse*=(D.rgb*0.95 + CONT_COEF);	// rise texture contrast for diffuse lighting
-#endif
-		hdiffuse *= occ;
-		hspecular *= occ; 
-#ifndef SSAO
-hmodel		(hdiffuse, hspecular, mtl, N.w, D.w, P.xyz, N.xyz);
-#endif
+//      hmodel		(hdiffuse, hspecular, mtl, 1, D.w, P.xyz, N.xyz);
+//	hdiffuse*=hdiffuse;			//. high contrast hemi
+//	hdiffuse*=(D.rgb*0.8 + 0.2h);	// rise texture contrast for diffuse lighting
+//	hdiffuse = 0.8;
+//	hdiffuse *= (occ*(D.rgb + .1h));
+	hdiffuse *= occ;
+	hspecular *= occ;
+
         half4         light       = half4         (L.rgb + hdiffuse, L.w)        ;
-        half4         C           = D*light       ;                                                        // rgb.gloss * light(diffuse.specular)
-        half3         spec        = C.www         + hspecular;        // replicated specular
+        half4         C           = D*light       ;                             // rgb.gloss * light(diffuse.specular)
+//        half3         spec        = (C.rgb*.5h + .5h)*C.w + hspecular + hspecular + hspecular;			// replicated specular
+	half3         spec        = C.www         + hspecular;      // replicated specular
+
 #ifdef         USE_SUPER_SPECULAR
                       spec      = (C.rgb*.5h + .5h)*C.w + hspecular        ;
 #endif
+//		half3       color     = C.rgb + D.rgb*spec     ;
+//		half3       color     = C.rgb + (D.rgb*spec+spec)/0.5h;
+		half3       color     = C.rgb + spec     ;
+//		half3       color     = C.rgb + D.rgb*spec+hspecular+hspecular     ;	//	More realistic and contrast specular - Ugrumiy edition
 
-		half3       color     = C.rgb + spec;
+////////////////////////////////////////////////////////////////////////////////
+/// For Test ///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+#ifdef         DBG_TEST_NMAP
+//. hemi + sun + lighting + specular
+					color 	= 	hdiffuse + L.rgb + N;
+#endif
 
-        //. color + hemi + sun + lighting + specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb+spec+C.rgb;
-        //. hemi + sun + lighting + specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb+spec;
-		//. hemi + sun + lighting no specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb;
-		//. hemi + sun no specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb;
-		//. sun + lighting + specular
-		//			color 	= 	hspecular+L.rgb+spec;
-		//. only lighting and specular
-		// color 		= light.rgb + spec;
+#ifdef         DBG_TEST_NMAP_SPEC
+//. hemi + sun + lighting + specular
+					color 	= 	hdiffuse + L.rgb + N + spec;
+#endif
+
+#ifdef         DBG_TEST_LIGHT
+//. hemi + sun + lighting + specular
+					color 	= 	hdiffuse + L.rgb;
+#endif
+
+#ifdef         DBG_TEST_LIGHT_SPEC
+//. hemi + sun + lighting + specular
+					color 	= 	hdiffuse + L.rgb + spec;
+#endif
+
+#ifdef         DBG_TEST_SPEC
+//. only lighting and specular
+					color 		= spec;
+#endif
+////////////////////////////////////////////////////////////////////////////////
 
         // here should be distance fog
         float3        	pos        		= P.xyz;
         float         	distance		= length		(pos);
         float         	fog				= saturate		(distance*fog_params.w + fog_params.x); //
                       	color			= lerp     		(color,fog_color,fog);        			//
-        half        	skyblend		= lerp(0,fog,pow(fog,5));//saturate(fog*fog);//
+        half        	skyblend		= saturate		(fog*fog);
 
 #ifdef         DBG_TMAPPING
         color                        	= D.xyz;
@@ -105,111 +152,10 @@ hmodel		(hdiffuse, hspecular, mtl, N.w, D.w, P.xyz, N.xyz);
 #ifdef        USE_SUPER_SPECULAR
         color        	= spec          - hspecular	;
 #endif
-#ifdef SATURATION_FILTER
-//adjust color saturation
-		float gray = dot(color.xyz,float3(0.3, 0.59, 0.11));
-		color.xyz = lerp(float3(gray,gray,gray),color.xyz,COLOR_SATURATION+(dot(Ldynamic_color.xyz,float3(1,1,1))/3)*COLOR_SAT_SUN_COEF);
-		float3 maxc = float3(1,0.62,0);
-	//	if (dot(color.xyz,1)>1.0f) color.xyz = lerp(maxc,color.xyz,0.75);
-#endif
-
-        _out        	o;
-        tonemap        	(o.low, o.high, color, tm_scale )	;
-                        o.low.a         = skyblend	;
-						o.high.a		= skyblend	;
-
-		return        	o;
-}
-	#else
-_out         main                ( _input I )
-{
-          // Sample the buffers:
-          float4 P        = tex2D         (s_position,      I.tc0);                // position.(mtl or sun)
-          half4 N         = tex2D         (s_normal,        I.tc0);                // normal.hemi
-          half4 D         = tex2D         (s_diffuse,       I.tc0);                // rgb.gloss
-          half4 L         = tex2D         (s_accumulator, 	I.tc0);                // diffuse.specular
-          float F32       = 1;
-#ifdef         USE_SUPER_SPECULAR
-        {
-                half        ds      	= dot        (D.rgb,1.h/3.h)  	;
-                       		D.w         = max        (D.w, 	ds*ds/8.h)	;
-        }
-#endif
-
-#ifdef  FORCE_GLOSS
-        D.w                =        FORCE_GLOSS                ;
-#endif
-
-#ifdef         USE_GAMMA_22
-        D.rgb        =        (D.rgb*D.rgb)        ;        // pow(2.2)
-#endif
-
-        // static sun
-	half mtl 		= P.w;
-#ifdef        USE_R2_STATIC_SUN
-	half	sun_occ        	=       P.w*2	;
-			mtl 			= 		xmaterial;
-            L              +=       Ldynamic_color * sun_occ * plight_infinity	(mtl, P.xyz, N.xyz, Ldynamic_dir);
-#endif
-
-       // hemisphere + SSAO
-        half3       hdiffuse,hspecular;
-		half occ = calc_ssao(P, N, I.tc0);
-        hmodel		(hdiffuse, hspecular, mtl, N.w, D.w, P.xyz, N.xyz);
-#ifdef SSAO_TEX_CONT
-		hdiffuse*=(D.rgb*0.95 + CONT_COEF);	// rise texture contrast for diffuse lighting
-#endif
-		hdiffuse *= occ;
-		hspecular *= occ; 
-#ifndef SSAO
-hmodel		(hdiffuse, hspecular, mtl, N.w, D.w, P.xyz, N.xyz);
-#endif
-                                D.w*=(D.w*mtl);
-        half4         light       = half4         ((L.rgb*2) + hdiffuse, (L.w*2))        ;
-        half4         C           = D*light       ;                                                        // rgb.gloss * light(diffuse.specular)
-        half3         spec        = C.www + hspecular * C.rgba * light.a      ;        // replicated specular
-#ifdef         USE_SUPER_SPECULAR
-                      spec      = (C.rgb*.5h + .5h)*C.w + hspecular        ;
-#endif
-		half3       color     = C.rgb + spec     ;
-
-        //. color + hemi + sun + lighting + specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb+spec+C.rgb;
-        //. hemi + sun + lighting + specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb+spec;
-		//. hemi + sun + lighting no specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb;
-		//. hemi + sun no specular
-		//			color 	= 	hdiffuse+hspecular+L.rgb;
-		//. sun + lighting + specular
-		//			color 	= 	hspecular+L.rgb+spec;
-		//. only lighting and specular
-		// color 		= light.rgb + spec;
-
-        // here should be distance fog
-        float3        	pos        		= P.xyz;
-        float         	distance		= length		(pos);
-        float         	fog				= saturate		(distance*fog_params.w + fog_params.x); //
-                      	color			= lerp     		(color,fog_color,fog);        			//
-        half        	skyblend		= lerp(0,fog,pow(fog,5));
-
-////////////////////////////////////////////////////////////////////////////////////////
-//#ifdef         DBG_TMAPPING
-//        color                        	= D.xyz;	//!garbage
-//#endif
-////////////////////////////////////////////////////////////////////////////////////////
-
-        // final tone-mapping
-#ifdef        USE_VTF
-        half          	tm_scale        = I.tc0.w;                // interpolated from VS
-#else
-        half         	tm_scale        = tex2D        (s_tonemap,I.tc0).w;
-#endif
-
-#ifdef        USE_SUPER_SPECULAR
-        color        	= spec          - hspecular	;
-#endif
-
+// color 		= N; //show normals
+// color 		= N.w; //show normals
+//   color 		= float4(occ.xxx,1.0f); //show occlusion
+//	color		= occ;
         _out        	o;
         tonemap        	(o.low, o.high, color, tm_scale )	;
                         o.low.a         = skyblend	;
@@ -220,4 +166,3 @@ hmodel		(hdiffuse, hspecular, mtl, N.w, D.w, P.xyz, N.xyz);
 
 		return        	o;
 }
-	#endif

@@ -32,5 +32,5 @@ float4 	main	( _input I ) : COLOR
 		s_sum.w = tex2D	(s_smap,I.RB).w;
 	half 	s 	= dot	(s_sum, 1.h/4.h);
 
-	return  	Ldynamic_color * light * s;
+	return 		Ldynamic_color * light * s;
 }
