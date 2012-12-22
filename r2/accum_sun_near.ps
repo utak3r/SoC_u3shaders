@@ -81,6 +81,8 @@ float4 	main(float2 tc : TEXCOORD0, float4 tcJ : TEXCOORD1) : COLOR
 
 #ifdef USE_SUN_SHAFTS
 	float4 ss = SunShafts2(tc,tcJ);
+	if (_P.z > 0 && _P.z < 12) 
+		ss = ss + ((ss/1.6-ss) * (_P.z-0)) / 12.f;
 #endif // USE_SUN_SHAFTS
 	half4 light = plight_infinity(m,_P,_N,Ldynamic_dir);
   	float4 P4 = float4(_P.x,_P.y,_P.z,1.f);
