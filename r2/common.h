@@ -14,7 +14,6 @@
 // #define DBG_TEST_LIGHT_SPEC
 
 // #define USE_GAMMA_22
-#define USE_GAMMA_NEW
 //#define USE_SJITTER
 //#define USE_SUNFILTER
 //#define USE_HWSMAP                	//- HW-options defined
