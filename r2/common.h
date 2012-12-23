@@ -23,7 +23,6 @@
 //#define USE_STEEPPARALLAX
 
 #define SMAP_size 2048
-//#define USE_HBAO // not supported
 #define SSAO_QUALITY 2
 #define SUN_QUALITY 2
 //#define USE_HWSMAP_PCF
