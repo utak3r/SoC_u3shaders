@@ -6,7 +6,8 @@ f_deffer main(p_flat I)
 	f_deffer O;
 	half4 D = tbase(I.tcdh);
 	//clip(D.w-def_aref);
-	D.w = (D.w-def_aref*0.5f)/(1-def_aref*0.5f);
+	//D.w = (D.w-def_aref*0.5f)/(1-def_aref*0.5f);
+	clip((D.w-def_aref*0.5f)/(1-def_aref*0.5f));
 
 #ifdef	USE_TDETAIL
 	D.rgb = 2*D.rgb*tex2D(s_detail, I.tcdbump).rgb;

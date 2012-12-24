@@ -6,7 +6,8 @@ half4 main(v_shadow_direct_aref I) : COLOR
 	return tex2D(s_base, I.tc0);
 #else
 	half4 C = tex2D(s_base, I.tc0);
-	clip(C.w - def_aref);
+	//clip(C.w - def_aref);
+	clip((C.w-def_aref*0.5f)/(1-def_aref*0.5f));
 	return I.depth;
 #endif
 }
