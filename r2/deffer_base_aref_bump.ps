@@ -5,8 +5,9 @@ f_deffer main(p_bumped I)
 {
 	f_deffer O;
 	surface_bumped S = sload(I);
-	clip(S.base.w-def_aref);
-	// Sample normal, rotate it by matrix, encode position 
+	//clip(S.base.w-def_aref);
+	clip((S.base.w-def_aref*0.5f)/(1-def_aref*0.5f));
+
 	half3 Ne = mul(half3x3(I.M1, I.M2, I.M3), S.normal);
 	Ne = normalize(Ne);
 	// hemi,sun,material
