@@ -1,8 +1,9 @@
 #include "common.h"
 #include "lmodel.h"
 #include "shadow.h"
-//#define SUN_FARPLANE 180.f
 
+// the idea of better in performance godrays
+// comes from Daemonjax. It works really fast! :)
 float4 SunShafts(float2 tc,float4 tcJ) 
 {
 	const float3 P = tex2D(s_position,tc).xyz;
@@ -30,113 +31,53 @@ float4 SunShafts(float2 tc,float4 tcJ)
 	return (res * Ldynamic_color);
 }
 
-#ifndef USE_F32
-	#ifdef USE_SUNFILTER
-		float4 main(float2 tc:TEXCOORD0,float4 tcJ:TEXCOORD1):COLOR
-		{
-			float4 _P=tex2D(s_position,tc);
-			_P.w=1.f;
-			float4 PS=mul (m_shadow,_P);
-			
-			#ifdef USE_HWSMAP
-				half s=sunmask(_P)*sample_hw(PS,float4(0,0,0,0));
-			#else
-				half s=sunmask(_P)*sample_sw(PS.xy/PS.w,float2(0,0),PS.z);
-			#endif
-		
-			return s;
-		}
-	#else
-		float4 main (float2 tc:TEXCOORD0,float4 tcJ:TEXCOORD1):COLOR
-		{
-			float4 _P=tex2D(s_position,tc);
-			half4 _N=tex2D(s_normal,tc);
-			float4 P4=float4(_P.x,_P.y,_P.z,1);
-			float4 PS=mul(m_shadow,P4);
-			
-			#ifdef USE_HWSMAP
-				#ifdef USE_FETCH4
-					half s=sunmask(P4)*sample_hw_f4(PS,float4(0,0,0,0));
-				#else
-					half s = sunmask(P4) * tex2Dproj(s_smap, PS).x;
-				#endif
-			#else
-				half s=sunmask(P4)*sample_sw(PS.xy/PS.w,float2(0,0),PS.z);
-			#endif
-			
-			//#ifdef SUN_FARPLANE
-			//	const float f = saturate(_P.z/SUN_FARPLANE);
-			//	s=lerp (s,0.333h,f*f);
-			//#endif
-			
-			#ifndef USE_R2_STATIC_SUN
-				const half4 light=plight_infinity(_P.w,_P,_N,Ldynamic_dir);
-			#else
-				const half4 light=plight_infinity(xmaterial,_P,_N,Ldynamic_dir);
-			#endif
-			
-			#ifdef SUN_SHAFTS
-				#ifdef SUN_SHAFTS_FIX
-					return blend(lerp((Ldynamic_color*light*s)*SS_FAR_CONTRAST,Ldynamic_color,light),tc);
-				#else					
-					return blend(lerp((Ldynamic_color*light*s)*SS_FAR_CONTRAST,SunShafts(tc,tcJ),light),tc);
-				#endif				
-			#else
-				return blend((Ldynamic_color*light*s),tc);
-			#endif
-		}
-	#endif
-#else
-	#ifdef USE_SUNFILTER
-	float4 main (float2 tc:TEXCOORD0,float4 tcJ:TEXCOORD1,float3 T:TANGENT,float4 color:COLOR0):COLOR
-	{
+#ifdef USE_SUNFILTER
+float4 main(float2 tc:TEXCOORD0,float4 tcJ:TEXCOORD1):COLOR
+{
 	float4 _P=tex2D(s_position,tc);
 	_P.w=1.f;
 	float4 PS=mul (m_shadow,_P);
+	
 	#ifdef USE_HWSMAP
-	half s=sunmask(_P)*sample_hw(PS,float4(0,0,0,0));
+		half s=sunmask(_P)*sample_hw(PS,float4(0,0,0,0));
 	#else
-	half s=sunmask(_P)*sample_sw(PS.xy/PS.w,float2(0,0),PS.z);
+		half s=sunmask(_P)*sample_sw(PS.xy/PS.w,float2(0,0),PS.z);
 	#endif
+
 	return s;
-	}
-	#else 
-	float4 main (float2 tc:TEXCOORD0,float4 tcJ:TEXCOORD1,float3 T:TANGENT,float4 color:COLOR0):COLOR
-	{
+}
+#else
+float4 main (float2 tc:TEXCOORD0,float4 tcJ:TEXCOORD1):COLOR
+{
 	float4 _P=tex2D(s_position,tc);
 	half4 _N=tex2D(s_normal,tc);
-	float3 TX=tan(_N);
-	half m=xmaterial;
-	# ifndef USE_R2_STATIC_SUN
-	m=_P.w;
-	# endif
-	float4 ss=0;
-	#ifdef SS_FARNEARLERP // can't get this to work right
-	if(_P.z>11.976 && _P.z<30) ss=SunShafts(tc,tcJ)/1.7+((0-SunShafts(tc,tcJ)/1.7)*(_P.z-11.976))/(30-11.976);
-	#else
-	ss=SunShafts(tc,tcJ);
-	#endif
-	half4 light=plight_infinity2(m,_P,_N,Ldynamic_dir,TX,color);
 	float4 P4=float4(_P.x,_P.y,_P.z,1);
 	float4 PS=mul(m_shadow,P4);
+	
 	#ifdef USE_HWSMAP
-	#ifdef USE_FETCH4
-	half s=sunmask(P4)*shadow_hw_f4(PS);
+		#ifdef USE_FETCH4
+			half s=sunmask(P4)*sample_hw_f4(PS,float4(0,0,0,0));
+		#else
+			half s = sunmask(P4) * tex2Dproj(s_smap, PS).x;
+		#endif
 	#else
-	half s=sunmask(P4)*sample_hw_pcf_far(PS);
+		half s=sunmask(P4)*sample_sw(PS.xy/PS.w,float2(0,0),PS.z);
 	#endif
+	
+	#ifndef USE_R2_STATIC_SUN
+		const half4 light=plight_infinity(_P.w,_P,_N,Ldynamic_dir);
 	#else
-	half s=sunmask(P4)*sample_sw(PS.xy/PS.w,float2(1,0),PS.z);
+		const half4 light=plight_infinity(xmaterial,_P,_N,Ldynamic_dir);
 	#endif
-	#ifdef SUN_FARPLANE
-	float f=saturate(_P.z/SUN_FARPLANE);
-	s=lerp (s,0.333h,f*f);
-	#endif
+	
 	#ifdef SUN_SHAFTS
-	return blend(lerp((Ldynamic_color*light*s)*SS_FAR_CONTRAST,ss,light),tc);
+		#ifdef SUN_SHAFTS_FIX
+			return blend(lerp((Ldynamic_color*light*s)*SS_FAR_CONTRAST,Ldynamic_color,light),tc);
+		#else					
+			return blend(lerp((Ldynamic_color*light*s)*SS_FAR_CONTRAST,SunShafts(tc,tcJ),light),tc);
+		#endif				
 	#else
-	return blend((Ldynamic_color*light*s),tc);
+		return blend((Ldynamic_color*light*s),tc);
 	#endif
-	}
-	#endif
+}
 #endif

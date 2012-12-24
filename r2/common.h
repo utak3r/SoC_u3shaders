@@ -334,6 +334,9 @@ half Contrast(half Input, half ContrastPower)
      return Output;
 }
 
+// this SSAO calculation algorithm is based on 
+// Meltac's and Daemonjax's ideas. Kudos to them for
+// this great piece of code :)
 half calc_ssao_new (half3 P, half3 N, half2 tc)
 {
 	#ifndef SSAO

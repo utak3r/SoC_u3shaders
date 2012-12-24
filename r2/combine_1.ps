@@ -39,7 +39,7 @@ _out main(_input I)
 	
 	#ifdef USE_R2_STATIC_SUN
 		half mtl=xmaterial;	
-		L+=Ldynamic_color*P.w*2*plight_infinity (mtl,P.xyz,N.xyz,Ldynamic_dir); //half sun_occ=P.w*2;
+		L+=Ldynamic_color*P.w*2*plight_infinity (mtl,P.xyz,N.xyz,Ldynamic_dir);
 	#else
 		half mtl=P.w;
 	#endif
@@ -57,15 +57,15 @@ _out main(_input I)
 	#endif
 
 	half4 C=D*(half4(L.rgb+hdiffuse,L.w));
-	float fog=saturate(length(P.xyz)*fog_params.w+fog_params.x); //float distance=length(P.xyz);		
+	float fog=saturate(length(P.xyz)*fog_params.w+fog_params.x);
 	
 	#ifdef DBG_TMAPPING
 		half3 color=D.xyz;
 	#else
 		#ifdef USE_SUPER_SPECULAR
-			half3 color=half3((C.rgb*.5h+.5h)*C.w+hspecular)-hspecular; //half3 spec=(C.rgb*.5h+.5h)*C.w+hspecular;
+			half3 color=half3((C.rgb*.5h+.5h)*C.w+hspecular)-hspecular;
 		#else
-			half3 color=lerp(half3(C.rgb+half3(C.www+hspecular)),fog_color,fog); //half3 spec=C.www+hspecular;
+			half3 color=lerp(half3(C.rgb+half3(C.www+hspecular)),fog_color,fog);
 		#endif
 	#endif
 	
