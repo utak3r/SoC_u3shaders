@@ -22,13 +22,18 @@
 //#define USE_SUNMASK                		//- shader defined
 //#define USE_STEEPPARALLAX
 
-#define SMAP_size 2048
 #define SSAO_QUALITY 2
 #define SUN_QUALITY 2
 //#define USE_HWSMAP_PCF
 //#define SUN_SHAFTS_QUALITY 3
 
 #define BLOOM_val 0.7h 		//Bloom brightness - Increases HDR brightness of the sky
+
+// Shadow resolution:   NOTE:  You will STILL have to use the -smapXXXX switch on your shortcut to the game executable, where XXXX = CUSTOM_SHADOW_RESOLUTION!!!
+#define SMAP_size 2048
+#define CUSTOM_SHADOW_RESOLUTION int(2048) 	// Use a custom shadow size. Default is 1024 (1024x1024).  You'll notice a significant performance hit at 4096.
+#define KERNEL float(1.6) 					// IMPORTANT For custom shadow resolution... Minimum recommended values: 1024 = .6, 2048 = 1.2, 4096 = 2.4, etc... Higher values produce softer shadows.
+#define XKERNEL float(1.6) 					// Probably should be same as KERNEL!
 
 // If you have USE_SUNFILTER on, then turn USE_SUN_SHAFTS off.
 //#define USE_SUN_SHAFTS
