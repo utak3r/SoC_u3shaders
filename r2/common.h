@@ -22,19 +22,35 @@
 //#define USE_SUNMASK                		//- shader defined
 //#define USE_STEEPPARALLAX
 
-#define SMAP_size 2048
 #define SSAO_QUALITY 2
 #define SUN_QUALITY 2
 //#define USE_HWSMAP_PCF
-//#define SUN_SHAFTS_QUALITY 3
 
 #define BLOOM_val 0.7h 		//Bloom brightness - Increases HDR brightness of the sky
 
+
+// Shadow resolution:   NOTE:  You will STILL have to use the -smapXXXX switch on your shortcut to the game executable, where XXXX = CUSTOM_SHADOW_RESOLUTION!!!
+#define SMAP_size 2048
+#define CUSTOM_SHADOW_RESOLUTION int(2048) 	// Use a custom shadow size. Default is 1024 (1024x1024).  You'll notice a significant performance hit at 4096.
+#define KERNEL float(1.6) 					// IMPORTANT For custom shadow resolution... Minimum recommended values: 1024 = .6, 2048 = 1.2, 4096 = 2.4, etc... Higher values produce softer shadows.
+#define XKERNEL float(1.6) 					// Probably should be same as KERNEL!
+
+
 // If you have USE_SUNFILTER on, then turn USE_SUN_SHAFTS off.
 //#define USE_SUN_SHAFTS
-#define SUN_SHAFTS_RAY_SAMPLES int(10)	 // Amount of sun ray samples. The higher this is, the lower your framerate.
-#define SUN_SHAFTS_INTENSITY half(1.5) // Intensity of sun rays per sample.
-#define SUN_SHAFTS_CONTRAST float(3) // Amount of contrast during sunray calculation.
+#define SUN_SHAFTS			// Enables Sun Shafts (god rays) # Only noticable on Full Dynamic Lighting, looks very nice but causes poor performance on some computers. Also makes the environment much brighter and natural.
+//#define SUN_SHAFTS_RAY_SAMPLES int(10)	 // Amount of sun ray samples. The higher this is, the lower your framerate.
+//#define SUN_SHAFTS_INTENSITY half(1.5) // Intensity of sun rays per sample.
+//#define SUN_SHAFTS_CONTRAST float(3) // Amount of contrast during sunray calculation.
+//#define SUN_SHAFTS_QUALITY 3
+
+#define RAY_SAMPLES int(16)	//Amount of sun ray samples. The higher this is, the better the quality and the lower your framerate. 12
+#define SS_INTENSITY float(1.1)	// intensity of sun shafts. 1.1
+#define SUN_SHAFTS_FIX	//Comment or Uncomment to enable or disable fix for far/near boundary.  Adjust SS_FAR_CONTRAST to hide the seam (it will never be perfect in all possible lighting). (By Daemonjax)
+
+#define SS_NEAR_CONTRAST float(6)	//Amount of contrast during sunray calculation (near). 6
+#define SS_FAR_CONTRAST float(5.35)	//Amount of contrast during sunray calculation (far). Adjust to hide near/fear seam when sun shafts are enabled and SUN_SHAFTS_FIX is enabled. 5.35
+
 
 // #define USE_HWSMAP_PCF				//- nVidia GF3+, R600+
 
