@@ -1,19 +1,8 @@
 #ifndef        COMMON_H
 #define        COMMON_H
 
-// #define USE_SUPER_SPECULAR
-
 #include "shared\common.h"
-//////////////////////////////////////////////////////////////////////////////////////////
-// *** options
 
-// #define DBG_TEST_NMAP
-// #define DBG_TEST_NMAP_SPEC
-// #define DBG_TEST_SPEC
-// #define DBG_TEST_LIGHT
-// #define DBG_TEST_LIGHT_SPEC
-
-// #define USE_GAMMA_22
 //#define USE_SJITTER
 //#define USE_SUNFILTER
 //#define USE_HWSMAP                	//- HW-options defined
@@ -22,10 +11,10 @@
 //#define USE_SUNMASK                		//- shader defined
 //#define USE_STEEPPARALLAX
 
-#define SSAO				// Enables Screen Space Ambient Occlusion  # Adds an extra level of shader-based shadowing.  Noticable in interiors.  Performance hit is comparable to parallax occlusion.
-#define SSAO_PASSES int(5) 	//Amount of SSAO sample passes.  Each pass takes 6 samples. Use a minimum of two (since actual number of passes is one less than this number).  6
-//#define SSAO_HIGH_QUALITY		//Increases the number of unique samples for each pass to 12.
-#define SAO_DENSITY int(1024) //Higher values increase sao definitition while reducing its size. No performance cost.  As you increase the number of passes,  you'll want to increase density. 1024
+#define SSAO					// Enables Screen Space Ambient Occlusion. Best effects can be seen in interiors.
+#define SSAO_PASSES int(5)		//Amount of SSAO sample passes.
+//#define SSAO_HIGH_QUALITY		//Increases the number of unique samples for each pass to 12 (instead of 6 by default).
+#define SAO_DENSITY int(1024)	//Higher values increase sao definitition while reducing its size. No performance cost.  As you increase the number of passes, you'll want to increase density. 1024
 #define SSAO_QUALITY 2
 #define SUN_QUALITY 2
 //#define USE_HWSMAP_PCF
@@ -66,7 +55,7 @@
 // #define DBG_TMAPPING
 //////////////////////////////////////////////////////////////////////////////////////////
 #ifndef SMAP_size
-#define SMAP_size        4096
+#define SMAP_size        2048
 #endif
 #define PARALLAX_H 0.08
 #define parallax float2(PARALLAX_H, -PARALLAX_H/2)
