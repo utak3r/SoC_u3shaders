@@ -11,6 +11,12 @@ There're also portions of code from other modders.
 Special thanks go to DeamonJax for his briliant ideas
 (mainly the sunshafts code).
 
+In order to use high resolution shadowmaps, please
+add -smap2048 (or other value) to your start script.
+It could look for example like this:
+
+@bin\XR_3DA.exe -nointro -nocache -noprefetch -smap2048
+
 
 Recommended settings for R2 with these shaders:
 ===============================================
