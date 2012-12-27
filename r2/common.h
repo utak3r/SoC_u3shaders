@@ -9,7 +9,6 @@
 //#define USE_FETCH4
 //#define USE_MBLUR                	//- HW-options defined
 //#define USE_SUNMASK                		//- shader defined
-//#define USE_STEEPPARALLAX
 
 #define SSAO					// Enables Screen Space Ambient Occlusion. Best effects can be seen in interiors.
 #define SSAO_PASSES int(5)		//Amount of SSAO sample passes.
@@ -49,7 +48,8 @@
 // #define FP16_BLEND                	//- HW-options defined
 //
 #define USE_PARALLAX                	//- shader defined
-// #define USE_TDETAIL                	//- shader defined
+//#define USE_STEEPPARALLAX				// don't use
+//#define USE_TDETAIL                	// don't use
 // #define USE_LM_HEMI                	//- shader defined
 //#define USE_DISTORT                	//- shader defined
 // #define DBG_TMAPPING
