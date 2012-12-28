@@ -152,26 +152,41 @@ struct         v_shadow_direct
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////
-struct         p_bumped        {
-        float4      hpos        : POSITION;
+struct p_bumped        
+{
+	float4 hpos : POSITION;
 #if defined(USE_R2_STATIC_SUN) && !defined(USE_LM_HEMI)
-        float4            tcdh        : TEXCOORD0;        // Texture coordinates,         w=sun_occlusion
+	float4 tcdh : TEXCOORD0;
 #else
-        float2            tcdh        : TEXCOORD0;        // Texture coordinates
+	float2 tcdh : TEXCOORD0;
 #endif
-        float4      position        : TEXCOORD1;        // position + hemi
-        half3       M1                : TEXCOORD2;        // nmap 2 eye - 1
-        half3       M2                : TEXCOORD3;        // nmap 2 eye - 2
-        half3       M3                : TEXCOORD4;        // nmap 2 eye - 3
+	float4 position : TEXCOORD1;
+	half3 M1 : TEXCOORD2;
+	half3 M2 : TEXCOORD3;
+	half3 M3 : TEXCOORD4;
+#if defined(USE_PARALLAX)
+	half3 eye : TEXCOORD5;
 #ifdef USE_TDETAIL
-        float2      tcdbump     	: TEXCOORD5;        // d-bump
-    #ifdef USE_LM_HEMI
-        float2      lmh             : TEXCOORD6;        // lm-hemi
-    #endif
+	float2 tcdbump : TEXCOORD6;
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD7;
+#endif
 #else
-    #ifdef USE_LM_HEMI
-        float2      lmh             : TEXCOORD5;        // lm-hemi
-    #endif
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD6;
+#endif
+#endif
+#else // USE_PARALLAX
+#ifdef USE_TDETAIL
+	float2 tcdbump : TEXCOORD5;
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD6;
+#endif
+#else
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD5;
+#endif
+#endif
 #endif
 };
 //////////////////////////////////////////////////////////////////////////////////////////

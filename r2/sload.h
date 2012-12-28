@@ -118,6 +118,27 @@ void UpdateTC( inout p_bumped I)
 
 #endif	//	USE_PARALLAX
 
+#ifdef USE_PARALLAX
+surface_bumped sload_i (p_bumped I)
+{
+	surface_bumped S;
+	half height	=tex2D (s_bumpX, I.tcdh).w;
+	height=height*(parallax.x)+(parallax.y);
+	float2	new_tc=I.tcdh+height*normalize (I.eye);
+	half4 Nu=tex2D	(s_bump, new_tc);
+	half4 NuE=tex2D (s_bumpX, new_tc);
+	S.base=tbase (new_tc);
+	S.normal=Nu.wzyx+(NuE.xyz-1.0h);
+	S.gloss=Nu.x*Nu.x;
+	S.height=NuE.z;
+#ifdef USE_TDETAIL
+	half4 detail=	tex2D(s_detail,I.tcdbump);
+	S.base.rgb=	S.base.rgb*detail.rgb*2;
+	S.gloss=S.gloss*detail.w*2;
+#endif
+	return S;
+}
+#else	// USE_PARALLAX
 surface_bumped sload_i( p_bumped I)
 {
 	surface_bumped	S;
@@ -132,8 +153,8 @@ surface_bumped sload_i( p_bumped I)
 	S.gloss		= Nu.x*Nu.x;					//	S.gloss = Nu.x*Nu.x;
 	S.height	= NuE.z;
 
-#ifdef        USE_TDETAIL
-#ifdef        USE_TDETAIL_BUMP
+#ifdef USE_TDETAIL
+#ifdef USE_TDETAIL_BUMP
 	half4 NDetail		= tex2D( s_detailBump, I.tcdbump);
 	half4 NDetailX		= tex2D( s_detailBumpX, I.tcdbump);
 	S.gloss				= S.gloss * NDetail.x * 2;
@@ -144,25 +165,24 @@ surface_bumped sload_i( p_bumped I)
 	S.base.rgb			= S.base.rgb * detail.rgb * 2;
 
 //	S.base.rgb			= float3(1,0,0);
-#else        //	USE_TDETAIL_BUMP
+#else	// USE_TDETAIL_BUMP
 	half4 detail		= tex2D( s_detail, I.tcdbump);
 	S.base.rgb			= S.base.rgb * detail.rgb * 2;
 	S.gloss				= S.gloss * detail.w * 2;
-#endif        //	USE_TDETAIL_BUMP
-#endif
+#endif	// USE_TDETAIL_BUMP
+#endif	// USE_TDETAIL
 	return S;
 }
+#endif	// USE_PARALLAX
 
 surface_bumped sload ( p_bumped I)
 {
-        surface_bumped      S   = sload_i	(I);
-		S.normal.z			*=	0.5;		//. make bump twice as contrast (fake, remove me if possible)
-
+	surface_bumped S = sload_i(I);
+	S.normal.z *= 0.5;		//. make bump twice as contrast (fake, remove me if possible)
 #if defined(ALLOW_STEEPPARALLAX) && defined(USE_STEEPPARALLAX)
-//		S.base.yz = float2(0,0);
+	//S.base.yz = float2(0,0);
 #endif
-
-        return              S;
+	return S;
 }
 
 #endif
