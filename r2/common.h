@@ -7,9 +7,8 @@
 //#define USE_SUNFILTER
 //#define USE_HWSMAP                	//- HW-options defined
 //#define USE_FETCH4
-//#define USE_MBLUR                	//- HW-options defined
+#define USE_MBLUR                	//- HW-options defined
 //#define USE_SUNMASK                		//- shader defined
-//#define USE_STEEPPARALLAX
 
 #define SSAO					// Enables Screen Space Ambient Occlusion. Best effects can be seen in interiors.
 #define SSAO_PASSES int(5)		//Amount of SSAO sample passes.
@@ -28,7 +27,7 @@
 #define XKERNEL float(1.6) 					// Probably should be same as KERNEL!
 
 #define COLOR_SATURATION float(.6)		//Level of Grey. 0 is all grey (Black and White), 1 is no Grey (Why have this enabled?)
-#define COLOR_SAT_SUN_COEF float(.6)		//How much influence sun lighting has on the saturation.
+#define COLOR_SAT_SUN_COEF float(.7)		//How much influence sun lighting has on the saturation.
 #define CONTRAST_FILTER_COEF float(0.1)	//Level of full screen contrast.
 #define SATURATION_FILTER	// Enables Saturation Filter, giving a grey like appearance to areas which are "unsafe".	
 #define CONTRAST_FILTER		// Enables Contrast Filter, giving a grey like appearance to areas which are "unsafe".
@@ -49,7 +48,8 @@
 // #define FP16_BLEND                	//- HW-options defined
 //
 #define USE_PARALLAX                	//- shader defined
-// #define USE_TDETAIL                	//- shader defined
+//#define USE_STEEPPARALLAX				// don't use
+//#define USE_TDETAIL                	// don't use
 // #define USE_LM_HEMI                	//- shader defined
 //#define USE_DISTORT                	//- shader defined
 // #define DBG_TMAPPING
@@ -57,7 +57,7 @@
 #ifndef SMAP_size
 #define SMAP_size        2048
 #endif
-#define PARALLAX_H 0.08
+#define PARALLAX_H 0.02
 #define parallax float2(PARALLAX_H, -PARALLAX_H/2)
 
 #ifdef        USE_R2_STATIC_SUN
@@ -76,22 +76,39 @@ uniform half4                Ldynamic_dir;                        // dynamic lig
 uniform half4                J_direct        [6];
 uniform half4                J_spot                [6];
 
-half          calc_fogging               (half4 w_pos)      { return dot(w_pos,fog_plane);         }
-half2         calc_detail                (half3 w_pos)      {
-        float                 dtl        = distance                (w_pos,eye_position)*dt_params.w;
-                              dtl        = min              (dtl*dtl, 1);
-        half                  dt_mul     = 1  - dtl;        // dt*  [1 ..  0 ]
-        half                  dt_add     = .5 * dtl;        // dt+  [0 .. 0.5]
-        return                half2      (dt_mul,dt_add);
-}
-float3         calc_reflection     (float3 pos_w, float3 norm_w)
-{
-    return reflect(normalize(pos_w-eye_position), norm_w);
+half calc_fogging(half4 w_pos)      
+{ 
+	return dot(w_pos, fog_plane);         
 }
 
-float3        calc_sun_r1                (float3 norm_w)    { return L_sun_color*saturate(dot((norm_w),-L_sun_dir_w));                 }
-float3        calc_model_hemi_r1         (float3 norm_w)    { return max(0,norm_w.y)*L_hemi_color;                                         }
-float3        calc_model_lq_lighting     (float3 norm_w)    { return L_material.x*calc_model_hemi_r1(norm_w) + L_ambient + L_material.y*calc_sun_r1(norm_w);         }
+half2 calc_detail(half3 w_pos)      
+{
+	float dtl = distance(w_pos, eye_position)*dt_params.w;
+	dtl = min(dtl*dtl, 1);
+	half dt_mul = 1 - dtl;
+	half dt_add = .5 * dtl;
+	return half2(dt_mul, dt_add);
+}
+
+float3 calc_reflection(float3 pos_w, float3 norm_w)
+{
+	return reflect(normalize(pos_w-eye_position), norm_w);
+}
+
+float3 calc_sun_r1(float3 norm_w)
+{
+	return L_sun_color*saturate(dot((norm_w),-L_sun_dir_w));
+}
+
+float3 calc_model_hemi_r1(float3 norm_w)
+{
+	return max(0,norm_w.y)*L_hemi_color;
+}
+
+float3 calc_model_lq_lighting(float3 norm_w)
+{
+	return L_material.x*calc_model_hemi_r1(norm_w) + L_ambient + L_material.y*calc_sun_r1(norm_w);
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////
 struct         v_static                {
@@ -152,26 +169,41 @@ struct         v_shadow_direct
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////
-struct         p_bumped        {
-        float4      hpos        : POSITION;
+struct p_bumped        
+{
+	float4 hpos : POSITION;
 #if defined(USE_R2_STATIC_SUN) && !defined(USE_LM_HEMI)
-        float4            tcdh        : TEXCOORD0;        // Texture coordinates,         w=sun_occlusion
+	float4 tcdh : TEXCOORD0;
 #else
-        float2            tcdh        : TEXCOORD0;        // Texture coordinates
+	float2 tcdh : TEXCOORD0;
 #endif
-        float4      position        : TEXCOORD1;        // position + hemi
-        half3       M1                : TEXCOORD2;        // nmap 2 eye - 1
-        half3       M2                : TEXCOORD3;        // nmap 2 eye - 2
-        half3       M3                : TEXCOORD4;        // nmap 2 eye - 3
+	float4 position : TEXCOORD1;
+	half3 M1 : TEXCOORD2;
+	half3 M2 : TEXCOORD3;
+	half3 M3 : TEXCOORD4;
+#if defined(USE_PARALLAX)
+	half3 eye : TEXCOORD5;
 #ifdef USE_TDETAIL
-        float2      tcdbump     	: TEXCOORD5;        // d-bump
-    #ifdef USE_LM_HEMI
-        float2      lmh             : TEXCOORD6;        // lm-hemi
-    #endif
+	float2 tcdbump : TEXCOORD6;
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD7;
+#endif
 #else
-    #ifdef USE_LM_HEMI
-        float2      lmh             : TEXCOORD5;        // lm-hemi
-    #endif
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD6;
+#endif
+#endif
+#else // USE_PARALLAX
+#ifdef USE_TDETAIL
+	float2 tcdbump : TEXCOORD5;
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD6;
+#endif
+#else
+#ifdef USE_LM_HEMI
+	float2 lmh : TEXCOORD5;
+#endif
+#endif
 #endif
 };
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -249,8 +281,8 @@ uniform sampler2D       s_tonemap;              // actually MidleGray / exp(Lw +
 //////////////////////////////////////////////////////////////////////////////////////////
 // Defines                                		//
 #define def_gloss       half(2.f /255.f)
-#define def_aref        half(220.f/255.f)
-#define def_dbumph      half(0.35f)
+#define def_aref        half(210.f/255.f)
+#define def_dbumph      half(0.34f)
 #define def_virtualh    half(0.05f)              // 5cm
 #define def_distort     half(0.05f)             // we get -0.5 .. 0.5 range, this is -512 .. 512 for 1024, so scale it
 #define def_hdr         half(9.h)         		// hight luminance range half(3.h)
@@ -287,8 +319,10 @@ void        tonemap              (out half4 low, out half4 high, half3 rgb, half
 //		rgb		/=	def_hdr	;
 //		high	= 	half4	(rgb, dot(rgb,0.333f)-def_hdr_clip)		;
 }
-half4		combine_bloom        (half3  low, half4 high)	{
-        return        half4(low + high*high.a, 1.h);
+
+half4 combine_bloom(half3 low, half4 high)
+{
+	return half4(low + high*high.a, 1.f);
 }
 
 float3	v_hemi        	(float3 n)                        	{        return L_hemi_color*(.5f + .5f*n.y);                   }

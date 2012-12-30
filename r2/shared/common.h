@@ -1,8 +1,3 @@
-//////////////////////////////////////////////////
-//  All comments by Nivenhbro are preceded by !
-/////////////////////////////////////////////////
-
-
 #ifndef SHARED_COMMON_H
 #define SHARED_COMMON_H
 //
@@ -32,24 +27,31 @@ half3 	unpack_normal	(half3 v)	{ return 2*v-1;			}
 half3 	unpack_bx2	(half3 v)	{ return 2*v-1; 		}
 float3 	unpack_bx4	(float3 v)	{ return 4*v-2; 		} //!reduce the amount of stretching from 4*v-2 and increase precision
 
-float2 	unpack_tc_base	(float2 tc, float du, float dv)		{
-		return (tc.xy + float2	(du,dv))*(32.f/32768.f);	//!Increase from 32bit to 64bit floating point
+float2 unpack_tc_base(float2 tc, float du, float dv)		
+{
+	return (tc.xy + float2(du,dv)) * (32.f/32768.f);
 }
 
-float2 	unpack_tc_lmap	(half2 tc)	{ return tc*(1.f/32768.f);	} // [-1  .. +1 ] 
-
-float 	calc_cyclic 	(float x)				{
-	float 	phase 	= 1/(2*3.141592653589f);
-	float 	sqrt2	= 1.4142136f;
-	float 	sqrt2m2	= 2.8284271f;
-	float 	f 	= sqrt2m2*frac(x)-sqrt2;	// [-sqrt2 .. +sqrt2] !No changes made, but this controls the grass wave (which is violent if I must say)
-	return 	f*f - 1.f;				// [-1     .. +1]
+float2 unpack_tc_lmap(float2 tc)	
+{ 
+	return tc * (1.f / 32768.f);	
 }
-float2 	calc_xz_wave 	(float2 dir2D, float frac)		{
-	// Beizer
-	float2  ctrl_A	= float2(0.f,		0.f	);
-	float2 	ctrl_B	= float2(dir2D.x,	dir2D.y	);
-	return  lerp	(ctrl_A, ctrl_B, frac);			//!This calculates tree wave. No changes made
+
+float calc_cyclic(float x)
+{
+	//float 	phase 	= 1/(2*3.141592653589f);
+	//float 	sqrt2	= 1.4142136f;
+	//float 	sqrt2m2	= 2.8284271f;
+	//float 	f 	= sqrt2m2*frac(x)-sqrt2;
+	float f = 2.f * frac(x) - 1.f;
+	return f*f - 1.f;
+}
+
+float2 calc_xz_wave(float2 dir2D, float frac)		
+{
+	float2 ctrl_A = float2(0.f, 0.f);
+	float2 ctrl_B = float2(dir2D.x, dir2D.y);
+	return lerp(ctrl_A, ctrl_B, frac);
 }
 
 #endif

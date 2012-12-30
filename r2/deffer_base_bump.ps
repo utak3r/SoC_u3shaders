@@ -4,7 +4,7 @@
 f_deffer main(p_bumped I)
 {
 	f_deffer O;
-	surface_bumped 	S 	= sload 	(I);
+	surface_bumped S = sload(I);
 	half3 Ne = mul(half3x3(I.M1, I.M2, I.M3), S.normal);
 	Ne = normalize(Ne);
 

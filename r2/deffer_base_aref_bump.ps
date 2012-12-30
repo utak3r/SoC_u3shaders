@@ -7,10 +7,8 @@ f_deffer main(p_bumped I)
 	surface_bumped S = sload(I);
 	//clip(S.base.w-def_aref);
 	clip((S.base.w-def_aref*0.5f)/(1-def_aref*0.5f));
-
 	half3 Ne = mul(half3x3(I.M1, I.M2, I.M3), S.normal);
 	Ne = normalize(Ne);
-	// hemi,sun,material
 	half ms = xmaterial;
 #ifdef USE_LM_HEMI
 	half4 lm = tex2D(s_hemi, I.lmh);
@@ -26,6 +24,6 @@ f_deffer main(p_bumped I)
 #endif
 	O.Ne = half4(Ne, h);
 	O.position = half4(I.position.xyz + Ne*S.height*def_virtualh, ms);
-	O.C = half4(S.base.x,S.base.y,S.base.z, S.gloss);
+	O.C = half4(S.base.xyz, S.gloss);
 	return O;
 }
