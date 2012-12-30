@@ -7,7 +7,7 @@
 //#define USE_SUNFILTER
 //#define USE_HWSMAP                	//- HW-options defined
 //#define USE_FETCH4
-//#define USE_MBLUR                	//- HW-options defined
+#define USE_MBLUR                	//- HW-options defined
 //#define USE_SUNMASK                		//- shader defined
 
 #define SSAO					// Enables Screen Space Ambient Occlusion. Best effects can be seen in interiors.
@@ -319,8 +319,10 @@ void        tonemap              (out half4 low, out half4 high, half3 rgb, half
 //		rgb		/=	def_hdr	;
 //		high	= 	half4	(rgb, dot(rgb,0.333f)-def_hdr_clip)		;
 }
-half4		combine_bloom        (half3  low, half4 high)	{
-        return        half4(low + high*high.a, 1.h);
+
+half4 combine_bloom(half3 low, half4 high)
+{
+	return half4(low + high*high.a, 1.f);
 }
 
 float3	v_hemi        	(float3 n)                        	{        return L_hemi_color*(.5f + .5f*n.y);                   }
