@@ -3,7 +3,7 @@
 struct _in
 {
 	float4 p : POSITION;
-	float2 tcJ : TEXCOORD0;
+	//float2 tcJ : TEXCOORD0;
 };
 
 struct _out

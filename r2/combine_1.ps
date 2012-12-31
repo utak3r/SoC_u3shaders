@@ -17,7 +17,7 @@ half4 high:COLOR1;
 };
 
 uniform sampler1D fog_table;
-uniform sampler2D jitter0;
+//uniform sampler2D jitter0;
 
 _out main(_input I) 
 {
@@ -51,6 +51,8 @@ _out main(_input I)
 		half occ=calc_ssao_new(P,N,I.tc0);
 		hdiffuse*=occ;
 		hspecular*=occ;
+	#else
+		hmodel(hdiffuse,hspecular,mtl,N.w,D.w,P.xyz,N.xyz);
 	#endif
 	#ifdef TEX_CONT
 		hdiffuse*=((D.rgb*TEX_CONT_COEF)+TEX_CONT_ADD);

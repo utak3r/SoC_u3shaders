@@ -357,108 +357,167 @@ half Contrast(half Input, half ContrastPower)
      return Output;
 }
 
+static const half2 poisson_disc12[12] = 
+{
+	half2(-0.326212f , -0.405810f),
+	half2(-0.840144f , -0.073580f),
+	half2(-0.695914f ,  0.457137f),
+	half2(-0.203345f ,  0.620716f),
+	half2( 0.962340f , -0.194983f),
+	half2( 0.473434f , -0.480026f),
+	half2( 0.519456f ,  0.767022f),
+	half2( 0.185461f , -0.893124f),
+	half2( 0.507431f ,  0.064425f),
+	half2( 0.896420f ,  0.412458f),
+	half2(-0.321940f , -0.932615f),
+	half2(-0.791559f , -0.597710f)
+};
+
+
+//	Old screen space ambient occlusion algorithm
+//	P	screen space position of the original point
+//	N	screen space normal of the original point
+//	tc	G-buffer coordinates of the original point
+half calc_ssao_old(half3 P, half3 N, half2 tc)
+{
+	half point_depth = P.z;
+	if (point_depth<0.01) point_depth = 100000.0h;	//	filter for the sky
+	half2 	scale 	= half2	(.5f / 1024.h, .5f / 768.h)*150/max(point_depth,1.3);
+
+	half 	occ	= 0.1h;	
+	half num_dir	= 0.1h;
+
+	for (int a=1; a<3; ++a)
+	{
+		half2	scale_tmp = scale*a;
+		for (int i=0; i<12; i++)
+		{
+			float2 	tap 	= tc + poisson_disc12[i]*scale_tmp;
+			half3	tap_pos	= tex2D	(s_position,tap);
+			half3 	dir 	= tap_pos-P.xyz;
+			half	dist	= length(dir);
+				dir 	= normalize(dir);
+			half 	infl 	= saturate(dot( dir, N.xyz));
+			half 	occ_factor = saturate(dist);
+
+			{
+				occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+				num_dir += (infl+0.01)/(occ_factor+0.1);
+			}
+		}
+	}
+	occ /= num_dir;
+
+	return occ;
+}
+
 // this SSAO calculation algorithm is based on 
 // Meltac's and Daemonjax's ideas. Kudos to them for
 // this great piece of code :)
+//	P	screen space position of the original point
+//	N	screen space normal of the original point
+//	tc	G-buffer coordinates of the original point
 half calc_ssao_new (half3 P, half3 N, half2 tc)
 {
 	#ifndef SSAO
 		return 1.h;
 	#else
 		
-		half2 scale = half2(.5f / SAO_DENSITY, .67f / SAO_DENSITY)*(150/max(P.z,1.3));
-		
-		half 	occ	 = 0.0h;	
-		half num_dir = 0.0h;
-		
-		#ifndef SSAO_NOLOOP
-		for (int a = 1; a < SSAO_PASSES; ++a)
-		#else
-			int a = 1;
-		#endif
-		{
-			half2	scale_tmp = scale*a;		
-			half3 	dir 	= tex2D	(s_position,tc + half2(-0.416212f, -0.665810f)*scale_tmp)-P.xyz;
-			half 	occ_factor = saturate(length(dir));
-			half 	infl 	= saturate(dot(normalize(dir), N.xyz));
-			
-			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-			num_dir += (infl+0.01)/(occ_factor+0.1);		
-
-			
-			dir 	= tex2D	(s_position,tc +half2(0.432340f,-0.093580f)*scale_tmp)-P.xyz;
-			occ_factor = saturate(length(dir));
-			infl 	= saturate(dot(normalize(dir), N.xyz));			
-			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-			num_dir += (infl+0.01)/(occ_factor+0.1);
-			
-			dir 	= tex2D	(s_position,tc +half2(-0.455914f,0.647137f)*scale_tmp)-P.xyz;
-			occ_factor = saturate(length(dir));
-			infl 	= saturate(dot(normalize(dir), N.xyz));			
-			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-			num_dir += (infl+0.01)/(occ_factor+0.1);
-			
-			dir 	= tex2D	(s_position,tc +half2(0.479456f,0.627022f)*scale_tmp)-P.xyz;
-			occ_factor = saturate(length(dir));
-			infl 	= saturate(dot(normalize(dir), N.xyz));			
-			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-			num_dir += (infl+0.01)/(occ_factor+0.1);
-						
-			dir 	= tex2D	(s_position,tc +half2(-0.492340f,0.090983f)*scale_tmp)-P.xyz;
-			occ_factor = saturate(length(dir));
-			infl 	= saturate(dot(normalize(dir), N.xyz));			
-			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-			num_dir += (infl+0.01)/(occ_factor+0.1);
-			
-			dir 	= tex2D	(s_position,tc +half2(0.413434f,-0.680026f)*scale_tmp)-P.xyz;
-			occ_factor = saturate(length(dir));
-			infl 	= saturate(dot(normalize(dir), N.xyz));			
-			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-			num_dir += (infl+0.01)/(occ_factor+0.1);
-						
-			#ifdef SSAO_HIGH_QUALITY
-			
-				dir 	= tex2D	(s_position,tc +half2(0.726212f, 0.305810f)*scale_tmp)-P.xyz;
-				occ_factor = saturate(length(dir));
-				infl 	= saturate(dot(normalize(dir), N.xyz));			
-				occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-				num_dir += (infl+0.01)/(occ_factor+0.1);
-				
-				dir 	= tex2D	(s_position,tc +half2(-0.742340f,0.173580f)*scale_tmp)-P.xyz;
-				occ_factor = saturate(length(dir));
-				infl 	= saturate(dot(normalize(dir), N.xyz));			
-				occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-				num_dir += (infl+0.01)/(occ_factor+0.1);
-				
-				dir 	= tex2D	(s_position,tc +half2(0.395914f,-0.757137f)*scale_tmp)-P.xyz;
-				occ_factor = saturate(length(dir));
-				infl 	= saturate(dot(normalize(dir), N.xyz));			
-				occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-				num_dir += (infl+0.01)/(occ_factor+0.1);
-				
-				dir 	= tex2D	(s_position,tc +half2(-0.719456f,-0.367022f)*scale_tmp)-P.xyz;
-				occ_factor = saturate(length(dir));
-				infl 	= saturate(dot(normalize(dir), N.xyz));			
-				occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-				num_dir += (infl+0.01)/(occ_factor+0.1);
-							
-				dir 	= tex2D	(s_position,tc +half2(0.772340f,-0.094983f)*scale_tmp)-P.xyz;
-				occ_factor = saturate(length(dir));
-				infl 	= saturate(dot(normalize(dir), N.xyz));			
-				occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-				num_dir += (infl+0.01)/(occ_factor+0.1);
-				
-				dir 	= tex2D	(s_position,tc +half2(-0.373434f,0.780026f)*scale_tmp)-P.xyz;
-				occ_factor = saturate(length(dir));
-				infl 	= saturate(dot(normalize(dir), N.xyz));			
-				occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
-				num_dir += (infl+0.01)/(occ_factor+0.1);
-				
-
-			#endif
-		}
-		return (occ / num_dir);
+	half point_depth = P.z;
+	//if (point_depth<0.01) point_depth = 100000.0h;	//	filter for the sky
+	half2 scale = half2(.5f / SAO_DENSITY, .67f / SAO_DENSITY)*(150/max(point_depth,1.3));
+	
+	half 	occ	 = 0.0h;	
+	half num_dir = 0.0h;
+	
+	#ifndef SSAO_NOLOOP
+	for (int a = 1; a < SSAO_PASSES; ++a)
+	#else
+		int a = 1;
 	#endif
+	{
+		half2	scale_tmp = scale*a;		
+		half3 	dir 	= tex2D	(s_position,tc + half2(-0.416212f, -0.665810f)*scale_tmp)-P.xyz;
+		half 	occ_factor = saturate(length(dir));
+		half 	infl 	= saturate(dot(normalize(dir), N.xyz));
+		
+		occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+		num_dir += (infl+0.01)/(occ_factor+0.1);		
+
+		
+		dir 	= tex2D	(s_position,tc +half2(0.432340f,-0.093580f)*scale_tmp)-P.xyz;
+		occ_factor = saturate(length(dir));
+		infl 	= saturate(dot(normalize(dir), N.xyz));			
+		occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+		num_dir += (infl+0.01)/(occ_factor+0.1);
+		
+		dir 	= tex2D	(s_position,tc +half2(-0.455914f,0.647137f)*scale_tmp)-P.xyz;
+		occ_factor = saturate(length(dir));
+		infl 	= saturate(dot(normalize(dir), N.xyz));			
+		occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+		num_dir += (infl+0.01)/(occ_factor+0.1);
+		
+		dir 	= tex2D	(s_position,tc +half2(0.479456f,0.627022f)*scale_tmp)-P.xyz;
+		occ_factor = saturate(length(dir));
+		infl 	= saturate(dot(normalize(dir), N.xyz));			
+		occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+		num_dir += (infl+0.01)/(occ_factor+0.1);
+					
+		dir 	= tex2D	(s_position,tc +half2(-0.492340f,0.090983f)*scale_tmp)-P.xyz;
+		occ_factor = saturate(length(dir));
+		infl 	= saturate(dot(normalize(dir), N.xyz));			
+		occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+		num_dir += (infl+0.01)/(occ_factor+0.1);
+		
+		dir 	= tex2D	(s_position,tc +half2(0.413434f,-0.680026f)*scale_tmp)-P.xyz;
+		occ_factor = saturate(length(dir));
+		infl 	= saturate(dot(normalize(dir), N.xyz));			
+		occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+		num_dir += (infl+0.01)/(occ_factor+0.1);
+					
+		#ifdef SSAO_HIGH_QUALITY
+		
+			dir 	= tex2D	(s_position,tc +half2(0.726212f, 0.305810f)*scale_tmp)-P.xyz;
+			occ_factor = saturate(length(dir));
+			infl 	= saturate(dot(normalize(dir), N.xyz));			
+			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+			num_dir += (infl+0.01)/(occ_factor+0.1);
+			
+			dir 	= tex2D	(s_position,tc +half2(-0.742340f,0.173580f)*scale_tmp)-P.xyz;
+			occ_factor = saturate(length(dir));
+			infl 	= saturate(dot(normalize(dir), N.xyz));			
+			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+			num_dir += (infl+0.01)/(occ_factor+0.1);
+			
+			dir 	= tex2D	(s_position,tc +half2(0.395914f,-0.757137f)*scale_tmp)-P.xyz;
+			occ_factor = saturate(length(dir));
+			infl 	= saturate(dot(normalize(dir), N.xyz));			
+			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+			num_dir += (infl+0.01)/(occ_factor+0.1);
+			
+			dir 	= tex2D	(s_position,tc +half2(-0.719456f,-0.367022f)*scale_tmp)-P.xyz;
+			occ_factor = saturate(length(dir));
+			infl 	= saturate(dot(normalize(dir), N.xyz));			
+			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+			num_dir += (infl+0.01)/(occ_factor+0.1);
+						
+			dir 	= tex2D	(s_position,tc +half2(0.772340f,-0.094983f)*scale_tmp)-P.xyz;
+			occ_factor = saturate(length(dir));
+			infl 	= saturate(dot(normalize(dir), N.xyz));			
+			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+			num_dir += (infl+0.01)/(occ_factor+0.1);
+			
+			dir 	= tex2D	(s_position,tc +half2(-0.373434f,0.780026f)*scale_tmp)-P.xyz;
+			occ_factor = saturate(length(dir));
+			infl 	= saturate(dot(normalize(dir), N.xyz));			
+			occ += (infl+0.01)*lerp( 1, occ_factor, infl)/(occ_factor+0.1);
+			num_dir += (infl+0.01)/(occ_factor+0.1);
+			
+
+		#endif
+	}
+	return (occ / num_dir);
+#endif
 }
 
 #define FXPS technique _render{pass _code{PixelShader=compile ps_3_0 main();}}
