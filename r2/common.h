@@ -3,12 +3,7 @@
 
 #include "shared\common.h"
 
-//#define USE_SJITTER
-//#define USE_SUNFILTER
-//#define USE_HWSMAP                	//- HW-options defined
-//#define USE_FETCH4
 #define USE_MBLUR                	//- HW-options defined
-//#define USE_SUNMASK                		//- shader defined
 
 #define SSAO					// Enables Screen Space Ambient Occlusion. Best effects can be seen in interiors.
 #define SSAO_PASSES int(5)		//Amount of SSAO sample passes.
@@ -25,6 +20,14 @@
 #define CUSTOM_SHADOW_RESOLUTION int(2048) 	// Use a custom shadow size. Default is 1024 (1024x1024).  You'll notice a significant performance hit at 4096.
 #define KERNEL float(1.6) 					// IMPORTANT For custom shadow resolution... Minimum recommended values: 1024 = .6, 2048 = 1.2, 4096 = 2.4, etc... Higher values produce softer shadows.
 #define XKERNEL float(1.6) 					// Probably should be same as KERNEL!
+
+#define USE_SJITTER
+#define HIGH_QUALITY_JITTER // few fps hit, but it's *really* worth of it
+#define JITTER_SAMPLES int(16) // for HIGH_QUALITY_JITTER. Must be an even number!
+//#define ADDITIONAL_SHADOW_PASS // may give strange results
+//#define USE_SUNFILTER
+//#define USE_HWSMAP                	//- HW-options defined
+//#define USE_SUNMASK                		//- shader defined
 
 #define COLOR_SATURATION float(.6)		//Level of Grey. 0 is all grey (Black and White), 1 is no Grey (Why have this enabled?)
 #define COLOR_SAT_SUN_COEF float(.7)		//How much influence sun lighting has on the saturation.
